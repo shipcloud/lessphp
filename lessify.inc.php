@@ -43,7 +43,7 @@ class easyparse {
 
     public function match($regex, &$out, $eatWhitespace = true) {
         $r = '/'.$regex.($eatWhitespace ? '\s*' : '').'/Ais';
-        if (preg_match($r, $this->buffer, $out, null, $this->count)) {
+        if (preg_match($r, $this->buffer, $out, 0, $this->count)) {
             $this->count += strlen($out[0]);
             return true;
         }
@@ -56,7 +56,7 @@ class easyparse {
 
         // shortcut on single letter
         if (!$eatWhitespace and strlen($what) === 1) {
-            if ($this->buffer{$this->count} == $what) {
+            if ($this->buffer[$this->count] == $what) {
                 $this->count++;
                 return true;
             }
@@ -367,7 +367,7 @@ class lessify extends lessc {
         print_r($this->env);
     }
 
-    public function parse($str = null) {
+    public function parse($str = null, $initialVariables = null) {
         $this->prepareParser($str ? $str : $this->buffer);
         while (false !== $this->parseChunk());
 
