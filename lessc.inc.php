@@ -61,6 +61,9 @@ class lessc {
     // formatter name or object, assigned by setFormatter()
     public $formatterName;
 
+    // file set by the deprecated constructor path, used by parse()
+    public $_parseFile;
+
     // compile state, assigned in compile()
     public $parser;
     public $env;
@@ -2441,6 +2444,7 @@ class lessc_parser {
     public $env;
     public $count;
     public $buffer;
+    public $currentProperty;
 
     // caches preg escaped literals
     static protected $literalCache = array();
