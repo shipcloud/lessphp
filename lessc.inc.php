@@ -58,6 +58,14 @@ class lessc {
 
     protected $allParsedFiles = array();
 
+    // formatter name or object, assigned by setFormatter()
+    public $formatterName;
+
+    // compile state, assigned in compile()
+    public $parser;
+    public $env;
+    public $scope;
+    public $formatter;
     // set to the parser that generated the current line when compiling
     // so we know how to create error messages
     protected $sourceParser = null;
@@ -1363,7 +1371,7 @@ class lessc {
                     $name = $name . ": ";
                 }
 
-                $this->throwError("${name}expecting $expectedArgs arguments, got $numValues");
+                $this->throwError("{$name}expecting $expectedArgs arguments, got $numValues");
             }
 
             return $values;
@@ -1669,7 +1677,7 @@ class lessc {
                 $width = strlen($colorStr) == 3 ? 16 : 256;
 
                 for ($i = 3; $i > 0; $i--) { // 3 2 1
-                    $t = $num % $width;
+                    $t = (int)$num % $width;
                     $num /= $width;
 
                     $c[$i] = $t * (256/$width) + $t * floor(16/$width);
@@ -1745,7 +1753,7 @@ class lessc {
         }
 
         // type based operators
-        $fname = "op_${ltype}_${rtype}";
+        $fname = "op_{$ltype}_{$rtype}";
         if (is_callable(array($this, $fname))) {
             $out = $this->$fname($op, $left, $right);
             if (!is_null($out)) return $out;
@@ -2421,6 +2429,18 @@ class lessc_parser {
      *     property2: (10 -5); // should evaluate to 5
      */
     protected $inParens = false;
+
+    // state assigned in the constructor / during parsing
+    public $eatWhiteDefault;
+    public $lessc;
+    public $sourceName;
+    public $writeComments;
+    public $seenComments;
+    public $line;
+    public $inExp;
+    public $env;
+    public $count;
+    public $buffer;
 
     // caches preg escaped literals
     static protected $literalCache = array();
@@ -3605,7 +3625,7 @@ class lessc_parser {
         if ($eatWhitespace === null) $eatWhitespace = $this->eatWhiteDefault;
 
         $r = '/'.$regex.($eatWhitespace && !$this->writeComments ? '\s*' : '').'/Ais';
-        if (preg_match($r, $this->buffer, $out, null, $this->count)) {
+        if (preg_match($r, $this->buffer, $out, 0, $this->count)) {
             $this->count += strlen($out[0]);
             if ($eatWhitespace && $this->writeComments) $this->whitespace();
             return true;
@@ -3617,7 +3637,7 @@ class lessc_parser {
     protected function whitespace() {
         if ($this->writeComments) {
             $gotWhite = false;
-            while (preg_match(self::$whitePattern, $this->buffer, $m, null, $this->count)) {
+            while (preg_match(self::$whitePattern, $this->buffer, $m, 0, $this->count)) {
                 if (isset($m[1]) && empty($this->seenComments[$this->count])) {
                     $this->append(array("comment", $m[1]));
                     $this->seenComments[$this->count] = true;
@@ -3636,7 +3656,7 @@ class lessc_parser {
     protected function peek($regex, &$out = null, $from=null) {
         if (is_null($from)) $from = $this->count;
         $r = '/'.$regex.'/Ais';
-        $result = preg_match($r, $this->buffer, $out, null, $from);
+        $result = preg_match($r, $this->buffer, $out, 0, $from);
 
         return $result;
     }
@@ -3780,6 +3800,8 @@ class lessc_formatter_classic {
     public $breakSelectors = false;
 
     public $compressColors = false;
+
+    public $indentLevel;
 
     public function __construct() {
         $this->indentLevel = 0;
